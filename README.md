@@ -1,16 +1,16 @@
-# inventora_app
+# InventoraApp
 
-A new Flutter project.
+Aplicativo desarrollado con **Flutter** con fines académicos, orientado a gestionar el **control de entradas y salidas del inventario** de pequeñas y medianas empresas (Pymes).
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+Este proyecto es un punto de partida para una aplicación Flutter.
 
-A few resources to get you started if this is your first Flutter project:
+Algunos recursos útiles si es tu primer proyecto con Flutter:
 
 - [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
 - [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Para más ayuda sobre el desarrollo con Flutter, revisa la
+[documentación en línea](https://docs.flutter.dev/), que ofrece tutoriales,
+ejemplos, guías sobre desarrollo móvil y una referencia completa de la API.
