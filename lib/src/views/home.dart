@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 // <-- 1. IMPORTA TU NUEVA PANTALLA DE INVENTARIO
 import 'package:inventora_app/src/views/inventario.dart';
+import 'package:inventora_app/src/views/alertas.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -717,6 +718,16 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const InventoryScreen()),
+            ).then((_) {
+              // Cuando se regrese de InventoryScreen, actualiza el índice a 0 (Inicio)
+              setState(() {
+                _selectedIndex = 0;
+              });
+            });
+          } else if (index == 3){
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AlertasScreen()),
             ).then((_) {
               // Cuando se regrese de InventoryScreen, actualiza el índice a 0 (Inicio)
               setState(() {
