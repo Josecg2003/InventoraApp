@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-// <-- 1. IMPORTA TU NUEVA PANTALLA DE INVENTARIO
-import 'package:inventora_app/src/views/inventario.dart';
-
+// Importación del archivo 'inventario.dart' dentro de views
+import 'package:inventora_app/src/views/inventario.dart'; 
+// CORRECCIÓN: Importación del archivo 'prediccion.dart' dentro de views
+import 'package:inventora_app/src/views/prediccion.dart'; // Asume que la clase es PrediccionPage
+// Importación del controlador de la carpeta 'controllers'
+import '../controllers/prediccion_inventario_controller.dart'; 
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -14,6 +17,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String selectedPeriod = 'Semana';
   int _selectedIndex = 0;
+
+  // 🔹 Instancia del controlador de predicción
+  final _prediccionController = PrediccionInventarioController();
+  
+  // --- Las listas y widgets de contenido van aquí ---
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +55,37 @@ class _HomeScreenState extends State<HomeScreen> {
                         _buildMetricsCards(),
                         const SizedBox(height: 24),
                         _buildSalesChart(),
+                        const SizedBox(height: 16),
+
+                        // 🔹 Botón de predicción IA (CORRECCIÓN 1: De llamada a Navegación)
+                        Center(
+                          child: ElevatedButton.icon(
+                            // ❌ ESTA LÍNEA ES LA QUE REEMPLAZAMOS: onPressed: () => _prediccionController.predecir(context),
+                            onPressed: () { // ⬅️ CORRECCIÓN: Navega a la página de formulario
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const PrediccionPage()), 
+                              );
+                              // Opcional: Actualizar el índice para resaltar el ícono inferior
+                              setState(() {
+                                 _selectedIndex = 2; // Índice de Predicción
+                              });
+                            },
+                            icon: const Icon(Icons.analytics_outlined, color: Colors.white),
+                            label: const Text(
+                              'Predecir Demanda',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blueAccent,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                          ),
+                        ),
+
                         const SizedBox(height: 24),
                         _buildHighRotationProducts(),
                         const SizedBox(height: 24),
@@ -66,6 +105,12 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
+
+  // --- MÉTODOS DE CONSTRUCCIÓN (Widgets existentes) ---
+
+  // (Todos los demás widgets intermedios como _buildHeader, _buildDashboardTitle, etc. van aquí)
+  
+  // (Debes pegar todos tus métodos auxiliares aquí: _makeGroupData, _buildMetricCard, _buildPeriodButton, etc.)
 
   Widget _buildHeader() {
     return Container(
@@ -92,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Inventario Pro', // Texto actualizado
+                    'Inventario Pro',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -236,6 +281,24 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool isPositive,
     bool showBadge = false,
   }) {
+    // Lógica para determinar el color del porcentaje/badge (mejorado para alertas)
+    Color percentColor;
+    Color percentBgColor;
+
+    if (showBadge && !isPositive) {
+      // Caso de Alerta
+      percentColor = const Color(0xFFFBBF24); // Amarillo de alerta
+      percentBgColor = const Color(0xFFFBBF24).withOpacity(0.1);
+    } else if (isPositive) {
+      // Caso Positivo
+      percentColor = const Color(0xFF4ADE80); // Verde
+      percentBgColor = const Color(0xFF4ADE80).withOpacity(0.1);
+    } else {
+      // Caso Negativo
+      percentColor = const Color(0xFFEF4444); // Rojo
+      percentBgColor = const Color(0xFFEF4444).withOpacity(0.1);
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -267,17 +330,13 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isPositive && !showBadge
-                      ? const Color(0xFF4ADE80).withOpacity(0.1)
-                      : const Color(0xFFEF4444).withOpacity(0.1),
+                  color: percentBgColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   percentage,
                   style: TextStyle(
-                    color: isPositive && !showBadge
-                        ? const Color(0xFF4ADE80)
-                        : const Color(0xFFEF4444),
+                    color: percentColor,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -676,7 +735,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
+  
   Widget _buildBottomNavigationBar() {
     return Container(
       decoration: BoxDecoration(
@@ -709,22 +768,30 @@ class _HomeScreenState extends State<HomeScreen> {
     final isSelected = _selectedIndex == index;
     return GestureDetector(
       onTap: () {
-        // <-- 2. AÑADE LA LÓGICA DE NAVEGACIÓN AQUÍ
-        // Si el índice seleccionado es diferente al actual
+        // Lógica de navegación
         if (_selectedIndex != index) {
-          // Si se toca el ícono de Inventario (índice 1)
-          if (index == 1) {
+          if (index == 1) { // Navegar a Inventario
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const InventoryScreen()),
             ).then((_) {
-              // Cuando se regrese de InventoryScreen, actualiza el índice a 0 (Inicio)
+              // Vuelve a Inicio cuando se regresa
+              setState(() {
+                _selectedIndex = 0; 
+              });
+            });
+          } else if (index == 2) { // Navegar a Predicción (CORRECCIÓN 2: Nombre de la clase)
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PrediccionPage()), // ⬅️ CORRECCIÓN: Usar PrediccionPage
+            ).then((_) {
+              // Vuelve a Inicio cuando se regresa
               setState(() {
                 _selectedIndex = 0;
               });
             });
           } else {
-            // Para otros íconos, solo actualizamos el estado por ahora
+            // Para otros íconos (Inicio y Alertas), solo actualizamos el estado
             setState(() {
               _selectedIndex = index;
             });
@@ -758,6 +825,4 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
-  }
-}
-
+  }}

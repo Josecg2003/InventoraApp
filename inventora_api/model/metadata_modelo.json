@@ -1,0 +1,16 @@
+{
+    "modelo": "RandomForestRegressor",
+    "columnas": [
+        "Producto",
+        "Categor\u00eda",
+        "Precio_Soles",
+        "Oferta",
+        "Temporada",
+        "Mes"
+    ],
+    "metricas": {
+        "MAE": 31.114444444444437,
+        "RMSE": 43.1568229659983,
+        "R2": 0.7028806215154246
+    }
+}
