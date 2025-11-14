@@ -1,9 +1,30 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
-// Asegúrate de que esta ruta sea correcta según tu estructura de carpetas
-import 'package:inventora_app/src/views/login.dart'; 
+import 'package:inventora_app/src/controllers/login_controller.dart';
+import 'package:inventora_app/src/controllers/register_controller.dart';
+import 'package:inventora_app/src/controllers/product_controller.dart';
+import 'package:inventora_app/src/views/login.dart'; // Tu vista de login
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const AppState()); // Ejecuta el widget que proveerá el estado
+}
+
+class AppState extends StatelessWidget {
+  const AppState({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider( // Puedes usar MultiProvider para añadir más controllers
+      providers: [
+        ChangeNotifierProvider(create: (_) => LoginController()),
+        ChangeNotifierProvider(create: (_) => RegisterController()),
+        ChangeNotifierProvider(create: (_) => ProductController()),
+        // Aquí podrías añadir un RegisterController, ProductController, etc.
+      ],
+      child: const MyApp(),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -13,13 +34,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Inventora App',
-      debugShowCheckedModeBanner: false, // Oculta la cinta de "Debug"
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      // Aquí le decimos a la app que empiece con tu LoginScreen
-      home: const LoginScreen(), 
+      debugShowCheckedModeBanner: false,
+      initialRoute: '/login', // O la ruta que prefieras
+      routes: {
+        '/login': (context) => const LoginScreen(), // Tu vista de login
+        // '/register': (context) => RegisterView(),
+        // '/home': (context) => HomeView(),
+      },
     );
   }
 }

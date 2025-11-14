@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-// <-- 1. IMPORTA TU NUEVA PANTALLA DE INVENTARIO
 import 'package:inventora_app/src/views/inventario.dart';
-
+import 'package:inventora_app/src/views/alertas_notif.dart';
+import 'package:provider/provider.dart';
+import 'package:inventora_app/src/models/stats_model.dart';
+import 'package:inventora_app/src/controllers/product_controller.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -12,62 +14,83 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  String selectedPeriod = 'Semana';
+  // ⛔ 1. ELIMINAMOS LA VARIABLE DE ESTADO LOCAL
+  // String selectedPeriod = 'Semana';
   int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    // Color principal oscuro del fondo
     const darkBackgroundColor = Color(0xFF1C1C2D);
     
-    return Scaffold(
-      backgroundColor: darkBackgroundColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(),
-            
-            // Content
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
-                ),
-                child: Container(
-                  color: const Color(0xFFF4F6FA), // Color de fondo para el contenido
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 20),
-                        _buildDashboardTitle(),
-                        const SizedBox(height: 20),
-                        _buildMetricsCards(),
-                        const SizedBox(height: 24),
-                        _buildSalesChart(),
-                        const SizedBox(height: 24),
-                        _buildHighRotationProducts(),
-                        const SizedBox(height: 24),
-                        _buildCategoryDistribution(),
-                        const SizedBox(height: 24),
-                        _buildInventoryStatus(),
-                        const SizedBox(height: 80),
-                      ],
+    return Consumer<ProductController>(
+      builder: (context, productController, child) {
+        final int totalAlerts = productController.products.where((p) => p.status == 'Bajo' || p.status == 'Crítico').length;
+        
+        return Scaffold(
+          backgroundColor: darkBackgroundColor,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                    child: Container(
+                      color: const Color(0xFFF4F6FA),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 20),
+                            _buildDashboardTitle(), // <--- Esta función llama a _buildPeriodButton
+                            const SizedBox(height: 20),
+                            
+                            if (productController.isLoading && productController.products.isEmpty)
+                              const Center(child: Padding(
+                                padding: EdgeInsets.all(20.0),
+                                child: CircularProgressIndicator(),
+                              ))
+                            else if (productController.errorMessage != null && productController.products.isEmpty)
+                              Center(child: Padding(
+                                padding: const EdgeInsets.all(20.0),
+                                child: Text('Error: ${productController.errorMessage}'),
+                              ))
+                            else
+                              Column(
+                                children: [
+                                  _buildMetricsCards(productController),
+                                  // const SizedBox(height: 24),
+                                  // _buildSalesChart(), // Oculto
+                                  // const SizedBox(height: 24),
+                                  // _buildHighRotationProducts(), // Oculto
+                                  const SizedBox(height: 24),
+                                  _buildCategoryDistribution(),
+                                  const SizedBox(height: 24),
+                                  _buildInventoryStatus(),
+                                  const SizedBox(height: 80),
+                                ],
+                              )
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+          ),
+          bottomNavigationBar: _buildBottomNavigationBar(totalAlerts),
+        );
+
+      },
     );
   }
 
   Widget _buildHeader() {
+    // ... (Tu código de Header - sin cambios)
     return Container(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -92,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Inventario Pro', // Texto actualizado
+                    'InventorApp',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
@@ -126,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const Text(
-            'Dashboard',
+            'Inicio',
             style: TextStyle(
               color: Colors.black,
               fontSize: 22,
@@ -152,13 +175,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ✅ 2. REEMPLAZA _buildPeriodButton
   Widget _buildPeriodButton(String period) {
-    final isSelected = selectedPeriod == period;
+    // Leemos el período actual desde el controller
+    // Usamos 'context.watch' para que el botón SE REDIBUJE
+    final controller = context.watch<ProductController>();
+    final isSelected = controller.selectedPeriod == period;
+    
     return GestureDetector(
       onTap: () {
-        setState(() {
-          selectedPeriod = period;
-        });
+        // Al tocar, le decimos al controller que cambie
+        // Usamos 'context.read' dentro de un onTap
+        context.read<ProductController>().changePeriod(period);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -178,7 +206,22 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMetricsCards() {
+  // ✅ 3. REEMPLAZA _buildMetricsCards
+  Widget _buildMetricsCards(ProductController productController) {
+    
+    final totalStock = productController.products.fold<int>(
+      0, (sum, product) => sum + product.stock
+    );
+    final totalAlerts = productController.products
+        .where((p) => p.status == 'Bajo' || p.status == 'Crítico')
+        .length;
+        
+    final double salesData = productController.salesData;
+    final String salesPeriod = productController.selectedPeriod;
+    
+    // ✅ Leemos el nuevo valor de rotación
+    final double rotation = productController.weeklyRotation;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: GridView.count(
@@ -187,40 +230,44 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisCount: 2,
         mainAxisSpacing: 16,
         crossAxisSpacing: 16,
-        childAspectRatio: 1.5,
+        childAspectRatio: 1.2,
         children: [
           _buildMetricCard(
             icon: Icons.attach_money,
             iconColor: const Color(0xFF4ADE80),
-            value: '\$12,450',
-            label: 'Ventas del Día',
-            percentage: '+8.2%',
+            value: 'S/ ${salesData.toStringAsFixed(2)}', 
+            label: 'Ventas del $salesPeriod',
+            percentage: '+0.0%',
             isPositive: true,
           ),
           _buildMetricCard(
             icon: Icons.inventory_2_outlined,
             iconColor: const Color(0xFF60A5FA),
-            value: '1,234',
-            label: 'Productos en Stock',
-            percentage: '-2.1%',
-            isPositive: false,
+            value: totalStock.toString(), 
+            label: 'Unidades en Stock',
+            percentage: '',
+            isPositive: true,
           ),
+          
+          // --- TARJETA DE ROTACIÓN ACTUALIZADA ---
           _buildMetricCard(
             icon: Icons.trending_up,
             iconColor: const Color(0xFFF472B6),
-            value: '89%',
+            // ✅ Dato real (formateado a 1 decimal)
+            value: '${rotation.toStringAsFixed(1)}%', 
             label: 'Rotación Semanal',
-            percentage: '+5.3%',
+            percentage: '', // Ya no necesitamos el % secundario
             isPositive: true,
           ),
+          
           _buildMetricCard(
             icon: Icons.warning_amber_outlined,
             iconColor: const Color(0xFFFBBF24),
-            value: '7',
+            value: totalAlerts.toString(), 
             label: 'Alertas Activas',
-            percentage: '+3',
+            percentage: '',
             isPositive: false,
-            showBadge: true,
+            showBadge: totalAlerts > 0,
           ),
         ],
       ),
@@ -236,6 +283,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool isPositive,
     bool showBadge = false,
   }) {
+    // ... (Tu código de MetricCard - sin cambios)
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -264,25 +312,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Icon(icon, color: iconColor, size: 20),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isPositive && !showBadge
-                      ? const Color(0xFF4ADE80).withOpacity(0.1)
-                      : const Color(0xFFEF4444).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  percentage,
-                  style: TextStyle(
+              if (percentage.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
                     color: isPositive && !showBadge
-                        ? const Color(0xFF4ADE80)
-                        : const Color(0xFFEF4444),
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
+                        ? const Color(0xFF4ADE80).withOpacity(0.1)
+                        : const Color(0xFFEF4444).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    percentage,
+                    style: TextStyle(
+                      color: isPositive && !showBadge
+                          ? const Color(0xFF4ADE80)
+                          : const Color(0xFFEF4444),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           Column(
@@ -312,93 +361,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSalesChart() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.bar_chart, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Ventas vs Predicción',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 180,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: 6000,
-                barTouchData: BarTouchData(enabled: false),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        const days = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sáb', 'Dom'];
-                        return Text(
-                          days[value.toInt()],
-                          style: const TextStyle(fontSize: 10),
-                        );
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                      getTitlesWidget: (value, meta) {
-                        if (value % 1500 == 0) {
-                          return Text(
-                            value.toInt().toString(),
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        }
-                        return const Text('');
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                ),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 1500,
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: [
-                  _makeGroupData(0, 4000, 4200),
-                  _makeGroupData(1, 3000, 3200),
-                  _makeGroupData(2, 2000, 2400),
-                  _makeGroupData(3, 2800, 3000),
-                  _makeGroupData(4, 2000, 2200),
-                  _makeGroupData(5, 2500, 2800),
-                  _makeGroupData(6, 3200, 3500),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    // ... (Tu código de SalesChart - sin cambios, Oculto)
+    return Container();
   }
 
   BarChartGroupData _makeGroupData(int x, double y1, double y2) {
+    // ... (Tu código de GroupData - sin cambios)
     return BarChartGroupData(
       x: x,
       barRods: [
@@ -419,37 +387,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHighRotationProducts() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Productos de Alta Rotación',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildProductProgress('Producto A', 23, 45),
-          const SizedBox(height: 12),
-          _buildProductProgress('Producto B', 18, 32),
-          const SizedBox(height: 12),
-          _buildProductProgress('Producto C', 15, 28),
-          const SizedBox(height: 12),
-          _buildProductProgress('Producto D', 12, 15),
-        ],
-      ),
-    );
+    // ... (Tu código de HighRotation - sin cambios, Oculto)
+    return Container();
   }
 
   Widget _buildProductProgress(String name, int current, int total) {
+    // ... (Tu código de ProductProgress - sin cambios)
     final percentage = (current / total);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -488,76 +431,75 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildCategoryDistribution() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Distribución por Categorías',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 180,
-            child: PieChart(
-              PieChartData(
-                sectionsSpace: 2,
-                centerSpaceRadius: 50,
-                sections: [
-                  PieChartSectionData(
-                    value: 35,
-                    title: '',
-                    color: const Color(0xFF8B5CF6),
-                    radius: 50,
-                  ),
-                  PieChartSectionData(
-                    value: 25,
-                    title: '',
-                    color: const Color(0xFF4ADE80),
-                    radius: 50,
-                  ),
-                  PieChartSectionData(
-                    value: 20,
-                    title: '',
-                    color: const Color(0xFFFBBF24),
-                    radius: 50,
-                  ),
-                  PieChartSectionData(
-                    value: 20,
-                    title: '',
-                    color: const Color(0xFFF97316),
-                    radius: 50,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            children: [
-              _buildLegendItem('Electrónicos', '35%', const Color(0xFF8B5CF6)),
-              _buildLegendItem('Ropa', '25%', const Color(0xFF4ADE80)),
-              _buildLegendItem('Hogar', '20%', const Color(0xFFFBBF24)),
-              _buildLegendItem('Deportes', '20%', const Color(0xFFF97316)),
-            ],
-          ),
-        ],
-      ),
-    );
+    // ... (Tu código de CategoryDistribution - sin cambios)
+    final controller = context.read<ProductController>();
+    final List<CategoryDistribution> data = controller.categoriesDistribution;
+    if (data.isEmpty) {
+    return Container(); 
   }
+  
+  final List<Color> colors = [
+    const Color(0xFF8B5CF6),
+    const Color(0xFF4ADE80),
+    const Color(0xFFFBBF24),
+    const Color(0xFFF97316),
+    const Color(0xFF60A5FA),
+  ];
+    return Container(
+    margin: const EdgeInsets.symmetric(horizontal: 16),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Distribución por Categorías',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          height: 180,
+          child: PieChart(
+            PieChartData(
+              sectionsSpace: 2,
+              centerSpaceRadius: 50,
+              sections: List.generate(data.length, (i) {
+                final item = data[i];
+                final color = colors[i % colors.length];
+                return PieChartSectionData(
+                  value: item.count.toDouble(),
+                  title: '${item.count}', 
+                  titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                  color: color,
+                  radius: 50,
+                );
+              }),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 16,
+          runSpacing: 8,
+          children: List.generate(data.length, (i) {
+             final item = data[i];
+             final color = colors[i % colors.length];
+             return _buildLegendItem(item.name, '${item.count} unid.', color);
+          }),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildLegendItem(String label, String percentage, Color color) {
+    // ... (Tu código de LegendItem - sin cambios)
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -571,7 +513,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(width: 6),
         Text(
-          '$label $percentage',
+          '$label ($percentage)',
           style: const TextStyle(fontSize: 12),
         ),
       ],
@@ -579,51 +521,65 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildInventoryStatus() {
+    // ... (Tu código de InventoryStatus - sin cambios)
+    final controller = context.read<ProductController>();
+    final int lowStockCount = controller.products
+      .where((p) => p.status == 'Bajo' || p.status == 'Crítico')
+      .length;
+      
+  final int optimalCount = controller.products
+      .where((p) => p.status == 'Óptimo')
+      .length;
+      
+  final double optimalPercentage = (controller.products.isEmpty)
+      ? 0.0
+      : (optimalCount / controller.products.length) * 100;
+    
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Estado del Inventario',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+    margin: const EdgeInsets.symmetric(horizontal: 16),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Estado del Inventario',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
           ),
-          const SizedBox(height: 16),
-          _buildStatusCard(
-            icon: Icons.warning_amber_rounded,
-            iconColor: const Color(0xFFEF4444),
-            bgColor: const Color(0xFFFEE2E2),
-            title: 'Stock Bajo',
-            subtitle: '3 productos necesitan reabastecimiento',
-          ),
-          const SizedBox(height: 12),
-          _buildStatusCard(
-            icon: Icons.schedule,
-            iconColor: const Color(0xFFFBBF24),
-            bgColor: const Color(0xFFFEF3C7),
-            title: 'Próximos a Vencer',
-            subtitle: '2 productos vencen esta semana',
-          ),
-          const SizedBox(height: 12),
-          _buildStatusCard(
-            icon: Icons.check_circle_outline,
-            iconColor: const Color(0xFF4ADE80),
-            bgColor: const Color(0xFFD1FAE5),
-            title: 'Inventario Óptimo',
-            subtitle: '89% de productos en nivel ideal',
-          ),
-        ],
-      ),
-    );
-  }
+        ),
+        const SizedBox(height: 16),
+        _buildStatusCard(
+          icon: Icons.warning_amber_rounded,
+          iconColor: const Color(0xFFEF4444),
+          bgColor: const Color(0xFFFEE2E2),
+          title: 'Stock Bajo / Crítico',
+          subtitle: '$lowStockCount productos necesitan reabastecimiento',
+        ),
+        const SizedBox(height: 12),
+        _buildStatusCard(
+          icon: Icons.schedule,
+          iconColor: const Color(0xFFFBBF24),
+          bgColor: const Color(0xFFFEF3C7),
+          title: 'Próximos a Vencer',
+          subtitle: '0 productos (Función no implementada)',
+        ),
+        const SizedBox(height: 12),
+        _buildStatusCard(
+          icon: Icons.check_circle_outline,
+          iconColor: const Color(0xFF4ADE80),
+          bgColor: const Color(0xFFD1FAE5),
+          title: 'Inventario Óptimo',
+          subtitle: '${optimalPercentage.toStringAsFixed(0)}% de productos en nivel ideal',
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildStatusCard({
     required IconData icon,
@@ -632,6 +588,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required String title,
     required String subtitle,
   }) {
+    // ... (Tu código de StatusCard - sin cambios)
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -677,8 +634,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildBottomNavigationBar() {
-    return Container(
+  Widget _buildBottomNavigationBar(int totalAlerts) {
+    // ... (Tu código de BottomNav - sin cambios)
+     return Container(
       decoration: BoxDecoration(
         color: Colors.black, // Fondo negro
         boxShadow: [
@@ -694,10 +652,10 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(Icons.home, 'Inicio', 0),
-              _buildNavItem(Icons.inventory_2_outlined, 'Inventario', 1),
-              _buildNavItem(Icons.trending_up, 'Predicción', 2),
-              _buildNavItem(Icons.notifications_outlined, 'Alertas', 3),
+              _buildNavItem(Icons.home, 'Inicio', 0,totalAlerts),
+              _buildNavItem(Icons.inventory_2_outlined, 'Inventario', 1,totalAlerts),
+              _buildNavItem(Icons.trending_up, 'Predicción', 2,totalAlerts),
+              _buildNavItem(Icons.notifications_outlined, 'Alertas', 3,totalAlerts),
             ],
           ),
         ),
@@ -705,26 +663,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    final isSelected = _selectedIndex == index;
+  Widget _buildNavItem(IconData icon, String label, int index, int totalAlerts) {
+    // ... (Tu código de NavItem - sin cambios)
+     final isSelected = _selectedIndex == index;
     return GestureDetector(
       onTap: () {
-        // <-- 2. AÑADE LA LÓGICA DE NAVEGACIÓN AQUÍ
-        // Si el índice seleccionado es diferente al actual
         if (_selectedIndex != index) {
-          // Si se toca el ícono de Inventario (índice 1)
           if (index == 1) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const InventoryScreen()),
             ).then((_) {
-              // Cuando se regrese de InventoryScreen, actualiza el índice a 0 (Inicio)
               setState(() {
                 _selectedIndex = 0;
               });
             });
-          } else {
-            // Para otros íconos, solo actualizamos el estado por ahora
+          } 
+          else if (index == 3) { 
+          // ✅ IR A ALERTAS
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+          ).then((_) {
+            // Cuando regrese, resetea el ícono a "Inicio" (index 0)
+            setState(() { _selectedIndex = 0; });
+          });
+        }
+          else {
             setState(() {
               _selectedIndex = index;
             });
@@ -740,10 +705,42 @@ class _HomeScreenState extends State<HomeScreen> {
               color: isSelected ? Colors.white : Colors.transparent,
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Icon(
-              icon,
-              color: isSelected ? Colors.black : Colors.white,
-              size: 24,
+            // ✅ ENVUELVE EL ICONO CON UN STACK
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? Colors.black : Colors.white,
+                  size: 24,
+                ),
+                // ✅ LÓGICA DEL BADGE
+                if (index == 3 && totalAlerts > 0)
+                  Positioned(
+                    right: -25, // Ajusta esto para tu diseño
+                    top: -10,   // Ajusta esto para tu diseño
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEF4444), // Rojo
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Text(
+                        '$totalAlerts',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: 4),
@@ -760,4 +757,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
