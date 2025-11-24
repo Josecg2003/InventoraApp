@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-// ⚠️ Asegúrate de que esta importación sea correcta.
-// Basado en tu estructura, debería ser:
-import '../controllers/prediccion_inventario_controller.dart'; 
+import '../controllers/prediccion_inventario_controller.dart';
+import '..//AI/modelo_ia_service.dart';
+
+// 📌 IMPORTA EL GRÁFICO
+import '../views/proyeccion_chart.dart';
 
 class PrediccionPage extends StatefulWidget {
   const PrediccionPage({Key? key}) : super(key: key);
@@ -11,66 +13,110 @@ class PrediccionPage extends StatefulWidget {
 }
 
 class _PrediccionPageState extends State<PrediccionPage> {
-  final predController = PrediccionInventarioController();
+  // Controladores
   final _formKey = GlobalKey<FormState>();
+  final _precioController = TextEditingController(text: '4.50');
+  final _stockController = TextEditingController(text: '120');
 
-  // 🔹 Controllers para campos de texto
-  final TextEditingController _productoController = TextEditingController(text: 'Arroz'); // Valor inicial de ejemplo
-  final TextEditingController _precioController = TextEditingController(text: '4.50');
-  final TextEditingController _stockController = TextEditingController(text: '120');
+  // ⭐ GUARDA LA PREDICCIÓN PARA EL GRÁFICO
+  double? _prediccion;
 
-  // 🔹 Variables para Dropdown (Selección)
-  String? _selectedCategoria = 'Abarrote';
-  String? _selectedTemporada = 'Verano';
-  int? _selectedOferta = 1; // 1 = Con Oferta, 0 = Sin Oferta
-  
-  // Opciones de ejemplo (deben coincidir con tus LabelEncoders de Python)
-  final List<String> _categorias = ['Abarrote', 'Lácteo', 'Electrónico', 'Hogar'];
-  final List<String> _temporadas = ['Verano', 'Otoño', 'Invierno', 'Primavera'];
-  
-  // El mes se puede calcular dinámicamente, pero para la prueba usaremos un valor
-  final int _mes = DateTime.now().month; 
-  
+  // Listas dinámicas
+  List<String> _productos = [];
+  List<String> _categorias = [];
+  List<String> _temporadas = [];
+  bool _isLoading = true;
+
+  // Selecciones actuales
+  String? _selectedProducto;
+  String? _selectedCategoria;
+  String? _selectedTemporada;
+
+  int _selectedOferta = 0;  
+  final int _selectedMes = DateTime.now().month;
+
+  final PrediccionInventarioController _controller =
+      PrediccionInventarioController();
+
+  final ModeloIAService _iaService = ModeloIAService();
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarParametros();
+  }
+
+  Future<void> _cargarParametros() async {
+    try {
+      final listas = await _iaService.obtenerListasParametros();
+
+      setState(() {
+        _productos = listas["productos"] ?? [];
+        _categorias = listas["categorias"] ?? [];
+        _temporadas = listas["temporadas"] ?? [];
+
+        _selectedProducto = _productos.isNotEmpty ? _productos.first : null;
+        _selectedCategoria = _categorias.isNotEmpty ? _categorias.first : null;
+        _selectedTemporada = _temporadas.isNotEmpty ? _temporadas.first : null;
+
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error cargando parámetros: $e')),
+      );
+    }
+  }
+
+  void _submitPrediction() {
+    if (_formKey.currentState!.validate() &&
+        _selectedProducto != null &&
+        _selectedCategoria != null &&
+        _selectedTemporada != null) {
+
+      double? precio = double.tryParse(_precioController.text);
+      int? stock = int.tryParse(_stockController.text);
+
+      if (precio != null && stock != null) {
+        _controller.predecir(
+          context,
+          producto: _selectedProducto!,
+          categoria: _selectedCategoria!,
+          precioSoles: precio,
+          oferta: _selectedOferta,
+          temporada: _selectedTemporada!,
+          mes: _selectedMes,
+          stockActual: stock,
+        );
+
+        // 📌 Guardamos la predicción recién calculada
+        setState(() {
+          _prediccion = _controller.ultimaPrediccion;
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
-    _productoController.dispose();
     _precioController.dispose();
     _stockController.dispose();
     super.dispose();
   }
 
-  // 🔹 Función para manejar el envío de la predicción
-  void _submitPrediction() {
-    if (_formKey.currentState!.validate()) {
-      // 1. Recoger todos los datos y convertirlos a sus tipos correctos
-      final String producto = _productoController.text.trim();
-      final String categoria = _selectedCategoria!;
-      final double precioSoles = double.tryParse(_precioController.text.trim()) ?? 0.0;
-      final int oferta = _selectedOferta!;
-      final String temporada = _selectedTemporada!;
-      final int stockActual = int.tryParse(_stockController.text.trim()) ?? 0;
-      
-      // 2. Llamar al controlador con los datos DINÁMICOS
-      predController.predecir(
-        context,
-        producto: producto,
-        categoria: categoria,
-        precioSoles: precioSoles,
-        oferta: oferta,
-        temporada: temporada,
-        mes: _mes,
-        stockActual: stockActual,
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Predicción de Demanda'),
-        backgroundColor: const Color(0xFF1C1C2D), 
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.blueAccent,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -78,182 +124,136 @@ class _PrediccionPageState extends State<PrediccionPage> {
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              // 1. Campo Producto
-              _buildTextField(_productoController, 'Producto', Icons.inventory, (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Ingrese el nombre del producto';
-                }
-                return null;
-              }),
-              
-              // 2. Campo Precio
-              _buildTextField(_precioController, 'Precio (Soles)', Icons.attach_money, (value) {
-                if (double.tryParse(value ?? '') == null) {
-                  return 'Ingrese un precio válido (ej: 4.50)';
-                }
-                return null;
-              }, keyboardType: TextInputType.number),
+            children: [
+              Text('Mes actual: $_selectedMes',
+                  style: TextStyle(color: Colors.grey)),
 
-              // 3. Campo Stock
-              _buildTextField(_stockController, 'Stock Actual', Icons.storage, (value) {
-                if (int.tryParse(value ?? '') == null) {
-                  return 'Ingrese una cantidad entera de stock';
-                }
-                return null;
-              }, keyboardType: TextInputType.number),
-              
+              const SizedBox(height: 16),
+
+              _buildDropdownField(
+                label: 'Producto',
+                value: _selectedProducto,
+                items: _productos,
+                onChanged: (v) => setState(() => _selectedProducto = v),
+              ),
+
+              _buildDropdownField(
+                label: 'Categoría',
+                value: _selectedCategoria,
+                items: _categorias,
+                onChanged: (v) => setState(() => _selectedCategoria = v),
+              ),
+
+              _buildDropdownField(
+                label: 'Temporada',
+                value: _selectedTemporada,
+                items: _temporadas,
+                onChanged: (v) => setState(() => _selectedTemporada = v),
+              ),
+
+              _buildTextField(
+                controller: _precioController,
+                label: 'Precio (S/)',
+                icon: Icons.attach_money,
+                keyboardType: TextInputType.number,
+              ),
+
+              _buildTextField(
+                controller: _stockController,
+                label: 'Stock Actual',
+                icon: Icons.inventory_2,
+                keyboardType: TextInputType.number,
+              ),
+
               const SizedBox(height: 20),
-              
-              // 4. Dropdown Categoría
-              _buildDropdownField(
-                'Categoría',
-                _selectedCategoria,
-                _categorias,
-                Icons.category,
-                (String? newValue) {
-                  setState(() {
-                    _selectedCategoria = newValue;
-                  });
-                },
+
+              const Text('¿Producto en oferta?',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              Row(
+                children: [
+                  _buildOfferRadio(label: 'Sí', value: 1),
+                  _buildOfferRadio(label: 'No', value: 0),
+                ],
               ),
 
-              // 5. Dropdown Temporada
-              _buildDropdownField(
-                'Temporada',
-                _selectedTemporada,
-                _temporadas,
-                Icons.wb_sunny,
-                (String? newValue) {
-                  setState(() {
-                    _selectedTemporada = newValue;
-                  });
-                },
-              ),
-              
-              // 6. Selección de Oferta
-              _buildOfferSelector(),
-              
-              const SizedBox(height: 30),
-              
-              // 7. Botón de Predicción
+              const SizedBox(height: 20),
+
               ElevatedButton.icon(
                 onPressed: _submitPrediction,
-                icon: const Icon(Icons.analytics_outlined, color: Colors.white),
-                label: const Text(
-                  'Predecir Demanda',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                icon: const Icon(Icons.analytics_outlined),
+                label: const Text('Predecir Demanda'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blueAccent,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
-              
-              const SizedBox(height: 10),
-              
-              // Mostrar Mes Actual (informativo)
-              Center(child: Text('Mes actual (para IA): $_mes', style: const TextStyle(color: Colors.grey))),
+
+              const SizedBox(height: 25),
+
+              // 📌 MOSTRAR GRÁFICO SI HAY PREDICCIÓN
+              if (_prediccion != null)
+                ProyeccionFuturaChart(prediccion: _prediccion!),
             ],
           ),
         ),
       ),
     );
   }
-  
-  // --- Widgets de Ayuda ---
-  
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label,
-    IconData icon,
-    String? Function(String?) validator, {
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.only(bottom: 16.0),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
-        validator: validator,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          border: const OutlineInputBorder(),
         ),
+        validator: (value) {
+          if (value == null || value.isEmpty) return 'Obligatorio';
+          if (double.tryParse(value) == null) return 'Número inválido';
+          return null;
+        },
       ),
     );
   }
 
-  Widget _buildDropdownField(
-    String label,
-    String? currentValue,
-    List<String> items,
-    IconData icon,
-    ValueChanged<String?> onChanged,
-  ) {
+  Widget _buildDropdownField({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required Function(String?) onChanged,
+  }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.only(bottom: 16.0),
       child: DropdownButtonFormField<String>(
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        value: currentValue,
-        items: items.map<DropdownMenuItem<String>>((String value) {
-          return DropdownMenuItem<String>(
-            value: value,
-            child: Text(value),
-          );
-        }).toList(),
+        value: value,
+        items: items
+            .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+            .toList(),
         onChanged: onChanged,
-        validator: (value) => value == null ? 'Seleccione una opción' : null,
+        decoration: InputDecoration(labelText: label, border: OutlineInputBorder()),
       ),
     );
   }
-  
-  Widget _buildOfferSelector() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          const Icon(Icons.discount, color: Colors.grey),
-          const SizedBox(width: 15),
-          const Text('¿Producto en oferta?', style: TextStyle(fontSize: 16)),
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                _buildOfferChip(1, 'Sí'),
-                const SizedBox(width: 10),
-                _buildOfferChip(0, 'No'),
-              ],
-            ),
-          ),
-        ],
+
+  Widget _buildOfferRadio({required String label, required int value}) {
+    return Expanded(
+      child: ListTile(
+        title: Text(label),
+        leading: Radio<int>(
+          value: value,
+          groupValue: _selectedOferta,
+          onChanged: (v) => setState(() => _selectedOferta = v!),
+        ),
       ),
-    );
-  }
-  
-  Widget _buildOfferChip(int value, String label) {
-    final isSelected = _selectedOferta == value;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      selectedColor: Colors.blueAccent,
-      labelStyle: TextStyle(
-        color: isSelected ? Colors.white : Colors.black87,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-      ),
-      onSelected: (selected) {
-        setState(() {
-          _selectedOferta = selected ? value : null;
-        });
-      },
     );
   }
 }

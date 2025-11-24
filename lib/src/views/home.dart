@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:inventora_app/src/views/inventario.dart';
 import 'package:inventora_app/src/views/alertas_notif.dart';
+import 'package:inventora_app/src/views/prediccion.dart';
 import 'package:provider/provider.dart';
 import 'package:inventora_app/src/models/stats_model.dart';
 import 'package:inventora_app/src/controllers/product_controller.dart';
+import 'package:inventora_app/src/views/sales_history_chart.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -60,19 +62,48 @@ class _HomeScreenState extends State<HomeScreen> {
                               ))
                             else
                               Column(
-                                children: [
-                                  _buildMetricsCards(productController),
-                                  // const SizedBox(height: 24),
-                                  // _buildSalesChart(), // Oculto
-                                  // const SizedBox(height: 24),
-                                  // _buildHighRotationProducts(), // Oculto
-                                  const SizedBox(height: 24),
-                                  _buildCategoryDistribution(),
-                                  const SizedBox(height: 24),
-                                  _buildInventoryStatus(),
-                                  const SizedBox(height: 80),
-                                ],
-                              )
+  children: [
+    _buildMetricsCards(productController),
+
+    const SizedBox(height: 24),
+
+    // -------------------------------
+    //  NUEVA SECCIÓN: GRÁFICA DE HISTORIAL
+    // -------------------------------
+  Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Historial de Ventas (Automático)",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ✔ GRÁFICA: siempre mostrará el primer producto de la BD
+          if (productController.products.isNotEmpty)
+            SalesHistoryChart(
+              producto: productController.products.first.name,
+            )
+          else
+            const Text("Cargando productos..."),
+        ],
+      ),
+    ),
+
+    const SizedBox(height: 24),
+
+    _buildCategoryDistribution(),
+    const SizedBox(height: 24),
+    _buildInventoryStatus(),
+    const SizedBox(height: 80),
+  ],
+)
+
                           ],
                         ),
                       ),
@@ -678,7 +709,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 _selectedIndex = 0;
               });
             });
-          } 
+          }
+          else if (index == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PrediccionPage()),
+            ).then((_) {
+              setState(() {
+                _selectedIndex = 0;
+              });
+            });
+          }
           else if (index == 3) { 
           // ✅ IR A ALERTAS
           Navigator.push(

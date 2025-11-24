@@ -6,8 +6,8 @@ import 'package:inventora_app/src/models/product_model.dart'; // Ajusta la ruta
 
 class ProductService {
   // Misma URL base que tu auth_service
-  //final String _baseUrl = 'http://localhost:3000/api';
-  final String _baseUrl = 'http://192.168.18.39:3000/api'; 
+  final String _baseUrl = 'http://localhost:3000/api';
+  // final String _baseUrl = 'http://192.168.18.39:3000/api'; 
 
   // ----- FUNCIÓN PARA OBTENER PRODUCTOS -----
   Future<List<Product>> getProducts() async {

@@ -511,9 +511,34 @@ app.get('/api/stats/rotation', (req, res) => {
 // ============================================
 // SERVIDOR
 // ============================================
+app.get('/api/sales-history/:product', (req, res) => {
+  const product = req.params.product;
+
+  const query = `
+    SELECT 
+      DATE(s.fecha) AS fecha,
+      SUM(s.cantidad) AS cantidad
+    FROM salidas s
+    JOIN productos p ON s.id_producto = p.id_producto
+    WHERE p.nombre_producto = ?
+    GROUP BY DATE(s.fecha)
+    ORDER BY fecha ASC;
+  `;
+
+  db.query(query, [product], (err, results) => {
+    if (err) {
+      console.error('❌ Error en sales-history:', err);
+      return res.status(500).json({ error: err.message });
+    }
+
+    res.json(results);
+  });
+});
+
 
 const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📡 API disponible en http://localhost:${PORT}/api`);
 });
+

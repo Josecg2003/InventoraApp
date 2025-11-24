@@ -2,11 +2,15 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ModeloIAService {
-  // ⚠️ Cambia la IP si usas emulador o dispositivo físico
+  // ======================================================
+  // 🔗 URL DE TU API (Flask)
+  // Para Windows / Web: SIEMPRE usar 127.0.0.1
+  // ======================================================
   final String baseUrl = "http://127.0.0.1:5000";
-  // Si estás en web/Windows usa "http://127.0.0.1:5000"
-  // Si es dispositivo físico, usa la IP de tu PC (ej: "http://192.168.1.8:5000")
 
+  // ======================================================
+  // 🔮 FUNCIÓN 1: LLAMAR AL ENDPOINT DE PREDICCIÓN
+  // ======================================================
   Future<Map<String, dynamic>> predecirDemanda({
     required String producto,
     required String categoria,
@@ -35,7 +39,30 @@ class ModeloIAService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Error al predecir: ${response.body}');
+      throw Exception('Error en predicción: ${response.body}');
     }
   }
+
+  // ======================================================
+  // 🔄 FUNCIÓN 2: OBTENER LISTAS DINÁMICAS DEL MODELO
+  // (Productos / Categorías / Temporadas)
+  // ======================================================
+  Future<Map<String, dynamic>> obtenerListasParametros() async {
+  final url = Uri.parse('$baseUrl/productos');
+
+  final response = await http.get(url);
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+
+    return {
+      "productos": List<String>.from(data["productos"] ?? []),
+      "categorias": List<String>.from(data["categorias"] ?? []),
+      "temporadas": List<String>.from(data["temporadas"] ?? []),
+    };
+  } else {
+    throw Exception("Error al obtener parámetros: ${response.body}");
+  }
+}
+
 }

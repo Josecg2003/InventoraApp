@@ -1,6 +1,6 @@
 {
     "modelo": "RandomForestRegressor",
-    "columnas": [
+    "columnas_usadas": [
         "Producto",
         "Categor\u00eda",
         "Precio_Soles",
@@ -9,8 +9,42 @@
         "Mes"
     ],
     "metricas": {
-        "MAE": 31.114444444444437,
-        "RMSE": 43.1568229659983,
-        "R2": 0.7028806215154246
+        "MAE": 20.24220588235294,
+        "RMSE": 29.91986455271717,
+        "R2": 0.866939782591645
+    },
+    "clases_encoder": {
+        "Producto": [
+            "Aceite Vegetal",
+            "Arroz",
+            "Azucar Rubia",
+            "Casaca",
+            "Chompa",
+            "Detergente",
+            "Galletas",
+            "Gaseosa 2L",
+            "Jabon",
+            "Mantequilla",
+            "Papel Higienico",
+            "Pasta Dental",
+            "Polo",
+            "Yogurt 1lit"
+        ],
+        "Categor\u00eda": [
+            "Abarrote",
+            "Bebida",
+            "L\u00e1cteos",
+            "Prendas",
+            "Producto Higiene"
+        ],
+        "Temporada": [
+            "Escolar",
+            "Fiestas Patrias",
+            "Invierno",
+            "Navidad",
+            "Oto\u00f1o",
+            "Primavera",
+            "Verano"
+        ]
     }
 }
