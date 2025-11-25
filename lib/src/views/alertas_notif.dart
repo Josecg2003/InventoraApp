@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:inventora_app/src/views/login.dart';
 // ✅ 1. IMPORTACIONES AÑADIDAS
 import 'package:provider/provider.dart';
 import 'package:inventora_app/src/controllers/product_controller.dart';
+import 'package:inventora_app/src/views/prediccion.dart';
 import 'package:inventora_app/src/models/product_model.dart';
 import 'package:inventora_app/src/views/home.dart';
 import 'package:inventora_app/src/views/inventario.dart';
@@ -21,7 +23,40 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   // ⛔ 2. ELIMINAMOS ESTAS VARIABLES (AHORA VIENEN DEL CONTROLLER)
   // int unreadNotifications = 3;
   // int highPriorityCount = 2;
-
+// ✅ Función para mostrar el diálogo y cerrar sesión
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar Sesión'),
+        content: const Text('¿Estás seguro de que deseas salir?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Cierra el diálogo
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // 1. Cierra el diálogo
+              Navigator.pop(context);
+              
+              // 2. Navega al Login y BORRA el historial anterior
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginScreen()), 
+                (Route<dynamic> route) => false,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444), // Rojo para indicar salida
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Salir'),
+          ),
+        ],
+      ),
+    );
+  }
   @override
   void initState() {
     super.initState();
@@ -76,12 +111,12 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    // ... (Tu código de AppBar no necesita cambios)
+    PreferredSizeWidget _buildAppBar() {
+    // ... (Tu código de AppBar - sin cambios)
     return AppBar(
-      backgroundColor: const Color(0xFF0A0E27),
+      backgroundColor: const Color.fromARGB(255, 0, 0, 0),
       elevation: 0,
-      // ✅ Hacemos que el botón "Atrás" funcione
+      // ✅ Hacemos que el botón "Home" funcione
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: Colors.white),
         onPressed: () => Navigator.of(context).pop(),
@@ -125,9 +160,10 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.person_outline, color: Colors.white),
-          onPressed: () {},
-        ),
+            icon: const Icon(Icons.logout, color: Colors.white), // Cambié el icono a 'logout' para que sea más claro
+            tooltip: 'Cerrar Sesión',
+            onPressed: _showLogoutDialog, // <-- Llamamos a la función
+          ),
       ],
     );
   }
@@ -275,7 +311,7 @@ Widget _buildHeader(int totalAlerts, int criticalCount) {
             // (Dato estático por ahora)
             number: '0',
             title: 'Próximos a Vencer',
-            subtitle: 'Función no\nimplementada',
+            subtitle: '',
           ),
           _buildSummaryCard(
             icon: Icons.trending_up,
@@ -283,7 +319,7 @@ Widget _buildHeader(int totalAlerts, int criticalCount) {
             bgColor: const Color(0xFFDBEAFE),
             number: '0',
             title: 'Sugerencias de\nPedido',
-            subtitle: 'Función no\nimplementada',
+            subtitle: '',
           ),
           _buildSummaryCard(
             icon: Icons.show_chart,
@@ -291,7 +327,7 @@ Widget _buildHeader(int totalAlerts, int criticalCount) {
             bgColor: const Color(0xFFFCE7F3),
             number: '0',
             title: 'Variaciones de\nDesempeño',
-            subtitle: 'Función no\nimplementada',
+            subtitle: '',
           ),
         ],
       ),
@@ -662,7 +698,7 @@ Widget _buildHeader(int totalAlerts, int criticalCount) {
     // });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Función de "Marcar como leído" no implementada'),
+        content: Text('Marcar como leído'),
         duration: Duration(seconds: 2),
       ),
     );
@@ -700,27 +736,43 @@ Widget _buildHeader(int totalAlerts, int criticalCount) {
   Widget _buildNavItem(IconData icon, String label, int index, int totalAlerts) {
     final isSelected = _selectedIndex == index;
     return GestureDetector(
-      onTap: () {
-        // ✅ 10. LÓGICA DE NAVEGACIÓN CORREGIDA
-        if (_selectedIndex == index) return; // No hacer nada si ya está activo
-
-        if (index == 0) { // IR A INICIO
-          // Cierra todas las pantallas y va a Home
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-            (Route<dynamic> route) => false,
-          );
-        } else if (index == 1) { // ✅ IR A INVENTARIO (CORREGIDO)
-          // Reemplaza la pantalla actual (Alertas) con la de Inventario
-          Navigator.pushReplacement(
+            onTap: () {
+        if (_selectedIndex != index) {
+          if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const InventoryScreen()),
+            ).then((_) {
+              setState(() {
+                _selectedIndex = 0;
+              });
+            });
+          }
+          else if (index == 2) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const PredictionScreen()),
+            ).then((_) {
+              setState(() {
+                _selectedIndex = 0;
+              });
+            });
+          }
+          else if (index == 3) { 
+          // ✅ IR A ALERTAS
+          Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const InventoryScreen()),
-          );
-        } else if (index == 2) { // IR A PREDICCIÓN (Opcional)
-          // No hacemos nada por ahora, pero mantenemos el ícono seleccionado
-          setState(() {
-            _selectedIndex = index;
+            MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+          ).then((_) {
+            // Cuando regrese, resetea el ícono a "Inicio" (index 0)
+            setState(() { _selectedIndex = 0; });
           });
+        }
+          else {
+            setState(() {
+              _selectedIndex = index;
+            });
+          }
         }
       },
       child: Container(

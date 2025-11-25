@@ -10,6 +10,7 @@ class ProductController extends ChangeNotifier {
 
   // ----- ESTADO -----
   List<Product> _products = [];
+  List<Map<String, dynamic>> _salesHistory = [];
   List<String> _categories = [];
   List<String> _providers = [];
   List<CategoryDistribution> _categoriesDistribution = [];
@@ -29,6 +30,7 @@ class ProductController extends ChangeNotifier {
   String get selectedPeriod => _selectedPeriod;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  List<Map<String, dynamic>> get salesHistory => _salesHistory;
 
   // ----- LÓGICA DE NEGOCIO -----
   
@@ -54,6 +56,7 @@ class ProductController extends ChangeNotifier {
         _productService.getCategoriesDistribution(),
         _productService.getSales(_selectedPeriod.toLowerCase()), 
         _productService.getWeeklyRotation(),
+        _productService.getSalesHistory(),
       ]);
 
       // Asignamos todos los resultados
@@ -63,6 +66,7 @@ class ProductController extends ChangeNotifier {
       _categoriesDistribution = results[3] as List<CategoryDistribution>;
       _salesData = results[4] as double; // Asigna las ventas
       _weeklyRotation = results[5] as double;
+      _salesHistory = results[6] as List<Map<String, dynamic>>;
       _errorMessage = null;
     } catch (e) {
       _errorMessage = e.toString();

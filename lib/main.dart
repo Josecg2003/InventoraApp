@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:inventora_app/src/controllers/login_controller.dart';
 import 'package:inventora_app/src/controllers/register_controller.dart';
 import 'package:inventora_app/src/controllers/product_controller.dart';
+import 'package:inventora_app/src/controllers/prediccion_inventario_controller.dart';
 import 'package:inventora_app/src/views/login.dart'; // Tu vista de login
 import 'package:provider/provider.dart';
 
@@ -20,6 +21,7 @@ class AppState extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => LoginController()),
         ChangeNotifierProvider(create: (_) => RegisterController()),
         ChangeNotifierProvider(create: (_) => ProductController()),
+        ChangeNotifierProvider(create: (_) => PredictionController()),
         // Aquí podrías añadir un RegisterController, ProductController, etc.
       ],
       child: const MyApp(),

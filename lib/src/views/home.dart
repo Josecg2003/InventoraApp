@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:inventora_app/src/views/inventario.dart';
 import 'package:inventora_app/src/views/alertas_notif.dart';
+import 'package:inventora_app/src/views/login.dart';
 import 'package:inventora_app/src/views/prediccion.dart';
 import 'package:provider/provider.dart';
 import 'package:inventora_app/src/models/stats_model.dart';
 import 'package:inventora_app/src/controllers/product_controller.dart';
-import 'package:inventora_app/src/views/sales_history_chart.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -19,10 +19,42 @@ class _HomeScreenState extends State<HomeScreen> {
   // ⛔ 1. ELIMINAMOS LA VARIABLE DE ESTADO LOCAL
   // String selectedPeriod = 'Semana';
   int _selectedIndex = 0;
-
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar Sesión'),
+        content: const Text('¿Estás seguro de que deseas salir?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Cierra el diálogo
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // 1. Cierra el diálogo
+              Navigator.pop(context);
+              
+              // 2. Navega al Login y BORRA el historial anterior
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginScreen()), 
+                (Route<dynamic> route) => false,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444), // Rojo para indicar salida
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Salir'),
+          ),
+        ],
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
-    const darkBackgroundColor = Color(0xFF1C1C2D);
+    const darkBackgroundColor = Color.fromARGB(255, 0, 0, 0);
     
     return Consumer<ProductController>(
       builder: (context, productController, child) {
@@ -62,48 +94,19 @@ class _HomeScreenState extends State<HomeScreen> {
                               ))
                             else
                               Column(
-  children: [
-    _buildMetricsCards(productController),
+                                children: [
+                                  _buildMetricsCards(productController),
 
-    const SizedBox(height: 24),
+                                  const SizedBox(height: 24),
+                                  _buildHistoryChart(productController),
+                                  const SizedBox(height: 24),
 
-    // -------------------------------
-    //  NUEVA SECCIÓN: GRÁFICA DE HISTORIAL
-    // -------------------------------
-  Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Historial de Ventas (Automático)",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // ✔ GRÁFICA: siempre mostrará el primer producto de la BD
-          if (productController.products.isNotEmpty)
-            SalesHistoryChart(
-              producto: productController.products.first.name,
-            )
-          else
-            const Text("Cargando productos..."),
-        ],
-      ),
-    ),
-
-    const SizedBox(height: 24),
-
-    _buildCategoryDistribution(),
-    const SizedBox(height: 24),
-    _buildInventoryStatus(),
-    const SizedBox(height: 80),
-  ],
-)
-
+                                  _buildCategoryDistribution(),
+                                  const SizedBox(height: 24),
+                                  _buildInventoryStatus(),
+                                  const SizedBox(height: 80),
+                                ],
+                              )
                           ],
                         ),
                       ),
@@ -115,7 +118,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           bottomNavigationBar: _buildBottomNavigationBar(totalAlerts),
         );
-
       },
     );
   }
@@ -165,8 +167,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           IconButton(
-            icon: const Icon(Icons.person_outline, color: Colors.white),
-            onPressed: () {},
+            icon: const Icon(Icons.logout, color: Colors.white), // Cambié el icono a 'logout' para que sea más claro
+            tooltip: 'Cerrar Sesión',
+            onPressed: _showLogoutDialog, // <-- Llamamos a la función
           ),
         ],
       ),
@@ -597,7 +600,7 @@ class _HomeScreenState extends State<HomeScreen> {
           iconColor: const Color(0xFFFBBF24),
           bgColor: const Color(0xFFFEF3C7),
           title: 'Próximos a Vencer',
-          subtitle: '0 productos (Función no implementada)',
+          subtitle: '0 productos',
         ),
         const SizedBox(height: 12),
         _buildStatusCard(
@@ -713,7 +716,7 @@ class _HomeScreenState extends State<HomeScreen> {
           else if (index == 2) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const PrediccionPage()),
+              MaterialPageRoute(builder: (context) => const PredictionScreen()),
             ).then((_) {
               setState(() {
                 _selectedIndex = 0;
@@ -796,5 +799,141 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildHistoryChart(ProductController controller) {
+    final history = controller.salesHistory;
+
+    if (history.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: Center(child: Text("No hay ventas recientes para mostrar.")),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Historial de Ventas (Últimos 7 días)",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 200,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: _getMaxY(history),
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    tooltipBgColor: Colors.blueGrey,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      return BarTooltipItem(
+                        'S/ ${rod.toY.toStringAsFixed(2)}',
+                        const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      );
+                    },
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30, // Damos un poco más de espacio vertical
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        
+                        if (index >= 0 && index < history.length) {
+                          // 1. Obtenemos la fecha original (ej: "23/11")
+                          final fechaRaw = history[index]['fecha'].toString();
+                          final parts = fechaRaw.split('/');
+                          
+                          if (parts.length == 2) {
+                            final day = parts[0];
+                            final monthNum = int.tryParse(parts[1]) ?? 0;
+
+                            // 2. Lista de meses abreviados
+                            const months = [
+                              '', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 
+                              'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+                            ];
+                            
+                            // 3. Obtenemos el nombre (ej: "Nov")
+                            final monthName = (monthNum > 0 && monthNum <= 12) 
+                                ? months[monthNum] 
+                                : '';
+
+                            // 4. Retornamos el texto formateado "Nov. 23"
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                '$monthName. $day', 
+                                style: const TextStyle(
+                                  fontSize: 10, 
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey // Un color sutil queda mejor
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                        return const Text('');
+                      },
+                    ),
+                  ),
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                gridData: FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                barGroups: history.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  
+                  final amount = double.tryParse(entry.value['total'].toString()) ?? 0.0;
+
+                  return BarChartGroupData(
+                    x: index,
+                    barRods: [
+                      BarChartRodData(
+                        toY: amount,
+                        color: const Color.fromARGB(255, 91, 192, 130),
+                        width: 16,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper para calcular la altura máxima del gráfico
+  // Helper para calcular la altura máxima del gráfico
+  double _getMaxY(List<Map<String, dynamic>> history) {
+    double max = 0;
+    for (var item in history) {
+      // ✅ CORRECCIÓN: Convertimos a String y luego parseamos a double
+      final val = double.tryParse(item['total'].toString()) ?? 0.0;
+      
+      if (val > max) max = val;
+    }
+    
+    // Si el máximo es 0 (no hay ventas), devolvemos al menos 100 para que el gráfico no se rompa
+    return max == 0 ? 100.0 : max * 1.2; 
   }
 }

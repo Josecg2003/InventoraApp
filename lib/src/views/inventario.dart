@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:inventora_app/src/views/home.dart';
 import 'package:inventora_app/src/views/alertas_notif.dart';
+import 'package:inventora_app/src/views/login.dart';
+import 'package:inventora_app/src/views/prediccion.dart';
 import 'package:provider/provider.dart';
 import 'package:inventora_app/src/controllers/product_controller.dart';
 import 'package:inventora_app/src/models/product_model.dart'; // Importamos el modelo correcto
@@ -17,7 +19,39 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String selectedCategory = 'Todas las categorías';
   String selectedStatus = 'Todos los estados';
   int _selectedIndex = 1;
-
+    void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar Sesión'),
+        content: const Text('¿Estás seguro de que deseas salir?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Cierra el diálogo
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              // 1. Cierra el diálogo
+              Navigator.pop(context);
+              
+              // 2. Navega al Login y BORRA el historial anterior
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const LoginScreen()), 
+                (Route<dynamic> route) => false,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444), // Rojo para indicar salida
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Salir'),
+          ),
+        ],
+      ),
+    );
+  }
   // ⛔ 2. ELIMINAMOS LA LISTA DE PRODUCTOS DE EJEMPLO
   // List<Product> products = [ ... ];
 
@@ -211,15 +245,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   fontSize: 12,
                 ),
               ),
+              
             ],
           ),
         ],
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.person_outline, color: Colors.white),
-          onPressed: () {},
-        ),
+            icon: const Icon(Icons.logout, color: Colors.white), // Cambié el icono a 'logout' para que sea más claro
+            tooltip: 'Cerrar Sesión',
+            onPressed: _showLogoutDialog, // <-- Llamamos a la función
+          ),
       ],
     );
   }
@@ -1005,6 +1041,11 @@ void _showProductDialog({Product? product}) {
           if (index == 0) {
             // Simplemente volvemos, ya que Home es la pantalla anterior
             Navigator.pop(context); 
+          } else if (index == 2){
+            Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const PredictionScreen()),
+            );
           }
           else if (index == 3) { 
           // ✅ IR A ALERTAS
@@ -1070,12 +1111,12 @@ void _showProductDialog({Product? product}) {
           ),
           const SizedBox(height: 4),
           Text(
-            label,
+            label, 
             style: TextStyle(
-              color: isSelected ? const Color(0xFF0A0E27) : Colors.white, // Color de texto seleccionado
-              fontSize: 11,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
+              color: Colors.white, // <--- CAMBIO REALIZADO
+              fontSize: 11, 
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+            )
           ),
         ],
       ),

@@ -7,8 +7,8 @@ import 'package:inventora_app/src/models/product_model.dart'; // Ajusta la ruta
 class ProductService {
   // Misma URL base que tu auth_service
   final String _baseUrl = 'http://localhost:3000/api';
-  // final String _baseUrl = 'http://192.168.18.39:3000/api'; 
-
+  // final String _baseUrl = 'http://192.168.18.39:3000/api';
+  final String _pythonUrl = "http://127.0.0.1:5000"; 
   // ----- FUNCIÓN PARA OBTENER PRODUCTOS -----
   Future<List<Product>> getProducts() async {
     
@@ -32,6 +32,7 @@ class ProductService {
       throw Exception('Error de conexión: $e');
     }
   }
+  
   Future<List<CategoryDistribution>> getCategoriesDistribution() async {
     final url = Uri.parse('$_baseUrl/stats/categories-distribution');
     try {
@@ -130,7 +131,21 @@ class ProductService {
       return { 'success': false, 'message': e.toString() };
     }
   }
-
+  // ----- OBTENER HISTORIAL DE VENTAS -----
+  Future<List<Map<String, dynamic>>> getSalesHistory() async {
+    final url = Uri.parse('$_baseUrl/stats/history');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        List<dynamic> data = json.decode(response.body);
+        return List<Map<String, dynamic>>.from(data);
+      } else {
+        return [];
+      }
+    } catch (e) {
+      return [];
+    }
+  }
   // ----- FUNCIÓN PARA ELIMINAR PRODUCTO -----
   Future<Map<String, dynamic>> deleteProduct(int id) async {
     final url = Uri.parse('$_baseUrl/products/$id'); // Apuntamos al ID
@@ -175,6 +190,73 @@ class ProductService {
       }
     } catch (e) {
       return 0.0;
+    }
+  }
+  // ... dentro de ProductService ...
+
+  // ✅ NUEVO: Obtener listas para el formulario (Productos, Categorías, Temporadas)
+  Future<Map<String, dynamic>> getPredictionSingle(Map<String, dynamic> inputData) async {
+    final url = Uri.parse('$_pythonUrl/predict'); // Endpoint simple
+    try {
+      final response = await http.post(
+        url,
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: json.encode(inputData),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body); // Devuelve { "Prediccion_Demanda": 150, ... }
+      } else {
+        print('Error Python Single: ${response.body}');
+        return {};
+      }
+    } catch (e) {
+      print('Error conexión Python Single: $e');
+      return {};
+    }
+  }
+  // 1. ✅ Obtener Serie de Predicción (Gráfico)
+  Future<List<Map<String, dynamic>>> getPredictionSerie(Map<String, dynamic> inputData) async {
+    final url = Uri.parse('$_pythonUrl/predict/serie');
+    try {
+      final response = await http.post(
+        url,
+        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+        body: json.encode(inputData),
+      );
+
+      if (response.statusCode == 200) {
+        // Python devuelve una lista: [{"fecha": "...", "prediccion": 123}, ...]
+        List<dynamic> data = json.decode(response.body);
+        return List<Map<String, dynamic>>.from(data);
+      } else {
+        print('Error Python Serie: ${response.body}');
+        return [];
+      }
+    } catch (e) {
+      print('Error conexión Python Serie: $e');
+      return [];
+    }
+  }
+
+  // 2. ✅ Obtener Predicción Única + Compra (Tarjetas de datos)
+  
+  Future<Map<String, List<String>>> getPredictionOptions() async {
+    final url = Uri.parse('$_pythonUrl/productos'); // Usa la URL de Python
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          "productos": List<String>.from(data["productos"] ?? []),
+          "categorias": List<String>.from(data["categorias"] ?? []),
+          "temporadas": List<String>.from(data["temporadas"] ?? []),
+        };
+      }
+      return {};
+    } catch (e) {
+      print("Error obteniendo opciones: $e");
+      return {};
     }
   }
 

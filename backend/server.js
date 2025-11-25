@@ -158,7 +158,31 @@ app.post('/api/products', (req, res) => {
     });
   });
 });
+// --- OBTENER HISTORIAL DE VENTAS (Últimos 7 días) ---
+app.get('/api/stats/history', (req, res) => {
+  const userOffset = '-05:00'; // Hora Perú
+  
+  // Esta consulta agrupa las ventas por FECHA
+  const query = `
+    SELECT 
+      DATE_FORMAT(CONVERT_TZ(s.fecha, '+00:00', '${userOffset}'), '%d/%m') as fecha,
+      COALESCE(SUM(s.cantidad * p.precio_venta), 0) as total
+    FROM salidas s
+    JOIN productos p ON s.id_producto = p.id_producto
+    WHERE s.fecha >= DATE_SUB(NOW(), INTERVAL 7 DAY) -- Últimos 7 días
+    GROUP BY DATE(CONVERT_TZ(s.fecha, '+00:00', '${userOffset}'))
+    ORDER BY s.fecha ASC;
+  `;
 
+  db.query(query, (err, results) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+    } else {
+      // Devuelve: [{ "fecha": "24/11", "total": 150.00 }, ...]
+      res.json(results);
+    }
+  });
+});
 app.put('/api/products/:id', (req, res) => {
   const { id } = req.params;
   const { name, category, price, stock, stock_minimo, provider, precio_compra } = req.body;
