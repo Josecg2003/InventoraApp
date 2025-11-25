@@ -203,7 +203,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
-    // ... (Tu código de AppBar - sin cambios)
+    // ... (Tu código de AppBar - sin camb
+    // ios)
     return AppBar(
       backgroundColor: const Color.fromARGB(255, 0, 0, 0),
       elevation: 0,

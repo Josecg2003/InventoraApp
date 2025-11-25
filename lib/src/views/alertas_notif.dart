@@ -738,7 +738,17 @@ Widget _buildHeader(int totalAlerts, int criticalCount) {
     return GestureDetector(
             onTap: () {
         if (_selectedIndex != index) {
-          if (index == 1) {
+          if (index == 0) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            ).then((_) {
+              setState(() {
+                _selectedIndex = 0;
+              });
+            });
+          }
+          else if (index == 1) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const InventoryScreen()),
