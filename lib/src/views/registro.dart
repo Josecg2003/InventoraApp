@@ -205,7 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       
                       const SizedBox(height: 20),
                       
-                      // ... (Texto 'Contraseña')
+                      
                       const Text(
                         'Contraseña',
                         style: TextStyle(fontSize: 14, color: Colors.black87),
@@ -213,7 +213,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _passwordController,
-                        enabled: !controller.isLoading, // ✅ Desactivar si carga
+                        enabled: !controller.isLoading, 
                         obscureText: _obscurePassword,
                         decoration: _buildInputDecoration().copyWith(
                           suffixIcon: IconButton(
@@ -247,7 +247,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 8),
                       TextFormField(
                         controller: _confirmPasswordController,
-                        enabled: !controller.isLoading, // ✅ Desactivar si carga
+                        enabled: !controller.isLoading, 
                         obscureText: _obscureConfirmPassword,
                         decoration: _buildInputDecoration().copyWith(
                           suffixIcon: IconButton(

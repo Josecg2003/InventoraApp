@@ -7,8 +7,7 @@ class AuthService {
 
   // IP para Emulador Android. Cambia a 'localhost' para iOS.
   //final String _baseUrl = 'http://localhost:3000/api'; 
-  final String _baseUrl = 'https://inventoraapp.onrender.com/api';
-  // final String _baseUrl = 'http://192.168.18.39:3000/api';
+  final String _baseUrl = 'http://192.168.18.42:3000/api';
   
   Future<Map<String, dynamic>> loginUser(String email, String password) async {
     
