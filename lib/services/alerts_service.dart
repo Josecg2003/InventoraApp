@@ -3,12 +3,13 @@ import 'package:http/http.dart' as http;
 
 class AlertsService {
   // Cambia según tu configuración
-  static const String baseUrl = 'http://localhost:3000/api';
+  //static const String baseUrl = 'http://localhost:3000/api';
+  static const String baseUrl = 'https://inventoraapp.onrender.com/api';
 
   static Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
 
   // ============ RESUMEN DE ALERTAS ============
 
@@ -185,7 +186,7 @@ class LowStockProduct {
       status: json['status'] ?? 'Normal',
     );
   }
-/*
+  /*
   Color get statusColor {
     switch (status) {
       case 'Crítico':
