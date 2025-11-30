@@ -18,13 +18,13 @@ setInterval(() => {
   });
 }, 5 * 60 * 1000);
 // ...
-db.connect((err) => {
+/*db.connect((err) => {
   if (err) {
     console.error('❌ Error al conectar con la base de datos:', err); // <--- CAMBIO AQUÍ
     return;
   }
   console.log('✅ Conexión a la base de datos exitosa.');
-});
+});*/
 // ============================================
 // ENDPOINTS DE PRODUCTOS
 // ============================================
