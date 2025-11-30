@@ -8,6 +8,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+setInterval(() => {
+  db.query('SELECT 1', (err) => {
+    if (err) {
+      console.error('[Heartbeat] Error manteniendo conexión DB:', err.message);
+    } else {
+      console.log('[Heartbeat] Ping a DB exitoso (Server activo)');
+    }
+  });
+}, 5 * 60 * 1000);
 // ...
 db.connect((err) => {
   if (err) {
