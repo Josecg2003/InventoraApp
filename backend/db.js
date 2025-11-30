@@ -6,7 +6,7 @@ import fs from 'fs';
 dotenv.config();
 
 
-const pool = mysql.createConnection({
+const connection = mysql.createConnection({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -23,7 +23,7 @@ const pool = mysql.createConnection({
   }
 });
 
-pool.getConnection((err, connection) => {
+connection.getConnection((err, connection) => {
   if (err) {
     console.error('❌ Error al conectar con el Pool de TiDB:', err.message);
   } else {
@@ -33,7 +33,7 @@ pool.getConnection((err, connection) => {
 });
 
 
-export default pool;
+export default connection;
 
 
 // config/db.js
