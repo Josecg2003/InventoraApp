@@ -16,13 +16,13 @@ class AppState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider( // Puedes usar MultiProvider para añadir más controllers
+    return MultiProvider( 
       providers: [
         ChangeNotifierProvider(create: (_) => LoginController()),
         ChangeNotifierProvider(create: (_) => RegisterController()),
         ChangeNotifierProvider(create: (_) => ProductController()),
         ChangeNotifierProvider(create: (_) => PredictionController()),
-        // Aquí podrías añadir un RegisterController, ProductController, etc.
+        
       ],
       child: const MyApp(),
     );

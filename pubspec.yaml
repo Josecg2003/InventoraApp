@@ -9,7 +9,7 @@ dependencies:
     sdk: flutter
   fl_chart: ^0.66.0
   http: ^1.2.1
-  provider: ^6.1.2 # O la versión más reciente
+  provider: ^6.1.2 
   cupertino_icons: ^1.0.8
   intl: ^0.20.2
 dev_dependencies:

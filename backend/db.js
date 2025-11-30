@@ -1,6 +1,34 @@
 // config/db.js
 import mysql from 'mysql2';
 import dotenv from 'dotenv';
+
+dotenv.config();
+
+const connection = mysql.createConnection({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+  ssl: {
+    rejectUnauthorized: true
+  }
+});
+
+connection.connect(err => {
+  if (err) {
+    console.error('❌ Error al conectar con TiDB:', err.message);
+  } else {
+    console.log('✅ Conectado exitosamente a TiDB Cloud.');
+  }
+});
+
+export default connection;
+
+
+// config/db.js
+/*import mysql from 'mysql2';
+import dotenv from 'dotenv';
 dotenv.config();
 
 const connection = mysql.createConnection({
@@ -19,4 +47,4 @@ connection.connect(err => {
   }
 });
 
-export default connection; // 👈 ESTA LÍNEA ES LA CLAVE
+export default connection; 👈 ESTA LÍNEA ES LA CLAVE*/
