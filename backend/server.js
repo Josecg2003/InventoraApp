@@ -1,4 +1,5 @@
 import db from './db.js';
+import { promisePool } from './db.js';
 import express from 'express';
 import cors from 'cors';
 import mysql from 'mysql2';
@@ -278,37 +279,86 @@ app.delete('/api/products/:id', (req, res) => {
     }
   });
 });
+
+
 // ============================================
-// ENDPOINT DE VENTAS (SALIDAS)
+// ENDPOINT DE VENTAS (SALIDAS) - CON TRANSACCIÓN
 // ============================================
 
-app.post('/api/salidas', (req, res) => {
-  // Obtenemos el ID del producto y la cantidad
+app.post('/api/salidas', async (req, res) => {
   const { id_producto, cantidad } = req.body;
 
   if (!id_producto || !cantidad) {
     return res.status(400).json({ error: 'Faltan id_producto o cantidad' });
   }
 
-  // Convertimos cantidad a número
   const cantNum = parseInt(cantidad, 10);
   if (cantNum <= 0) {
     return res.status(400).json({ error: 'La cantidad debe ser mayor a 0' });
   }
 
-  // 1. Insertamos la salida en la tabla 'salidas'
-  // (Asumimos que id_cliente e id_usuario son nulos por ahora)
-  const queryInsert = 'INSERT INTO salidas (id_producto, cantidad) VALUES (?, ?)';
+  // Usamos una conexión con transacción
+  const connection = await promisePool.getConnection();
   
-  db.query(queryInsert, [id_producto, cantNum], (err, result) => {
-    if (err) {
-      console.error('Error al insertar salida:', err);
-      return res.status(500).json({ error: 'Error al registrar la salida' });
+  try {
+    // Iniciamos la transacción
+    await connection.beginTransaction();
+
+    // 1. Verificamos el stock actual
+    const [productos] = await connection.query(
+      'SELECT stock_actual, nombre_producto FROM productos WHERE id_producto = ?',
+      [id_producto]
+    );
+
+    if (productos.length === 0) {
+      await connection.rollback();
+      connection.release();
+      return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
-    // ✅ Éxito. El trigger de la BD se encargará del stock.
-    res.status(201).json({ message: 'Venta registrada' });
-  });
+    const stockActual = productos[0].stock_actual;
+    const nombreProducto = productos[0].nombre_producto;
+
+    // 2. Validamos que haya stock suficiente
+    if (stockActual < cantNum) {
+      await connection.rollback();
+      connection.release();
+      return res.status(400).json({ 
+        error: `Stock insuficiente para ${nombreProducto}. Stock actual: ${stockActual}, solicitado: ${cantNum}` 
+      });
+    }
+
+    // 3. Insertamos la salida
+    await connection.query(
+      'INSERT INTO salidas (id_producto, cantidad) VALUES (?, ?)',
+      [id_producto, cantNum]
+    );
+
+    // 4. Actualizamos el stock (DISMINUIMOS)
+    await connection.query(
+      'UPDATE productos SET stock_actual = stock_actual - ? WHERE id_producto = ?',
+      [cantNum, id_producto]
+    );
+
+    // Confirmamos la transacción
+    await connection.commit();
+    connection.release();
+
+    console.log(`✅ Venta registrada: ${nombreProducto} - Cantidad: ${cantNum}`);
+    res.status(201).json({ 
+      message: 'Venta registrada exitosamente',
+      producto: nombreProducto,
+      cantidad: cantNum,
+      nuevoStock: stockActual - cantNum
+    });
+
+  } catch (err) {
+    // Si hay error, revertimos todo
+    await connection.rollback();
+    connection.release();
+    console.error('❌ Error al registrar venta:', err);
+    res.status(500).json({ error: 'Error al registrar la venta' });
+  }
 });
 // ============================================
 // ENDPOINTS DE CATEGORÍAS

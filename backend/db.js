@@ -35,6 +35,7 @@ pool.getConnection((err, connection) => {
 });
 
 // Exportamos el pool (No una conexión simple)
+export const promisePool = pool.promise();
 export default pool;
 
 
