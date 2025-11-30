@@ -1,6 +1,7 @@
 // config/db.js
 import mysql from 'mysql2';
 import dotenv from 'dotenv';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -11,7 +12,8 @@ const connection = mysql.createConnection({
   database: process.env.DB_NAME,
   port: process.env.DB_PORT,
   ssl: {
-    rejectUnauthorized: true
+    rejectUnauthorized: true,
+    ca: fs.readFileSync('./isrgrootx1.pem')
   }
 });
 
