@@ -1,39 +1,41 @@
-
 import mysql from 'mysql2';
 import dotenv from 'dotenv';
 import fs from 'fs';
 
 dotenv.config();
 
-
-const connection = mysql.createConnection({
+// Creamos el Pool (La forma correcta y robusta)
+const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
+  port: process.env.DB_PORT || 4000, // Mantiene tu puerto 4000
   
+  // Configuraciones del Pool
   waitForConnections: true, 
   connectionLimit: 10,     
   queueLimit: 0, 
 
+  // Configuración SSL (La tuya original)
   ssl: {
     rejectUnauthorized: true,
     ca: fs.readFileSync('./isrgrootx1.pem') 
   }
 });
 
-connection.getConnection((err, connection) => {
+// Prueba de conexión del Pool (Sustituye a connection.connect)
+pool.getConnection((err, connection) => {
   if (err) {
     console.error('❌ Error al conectar con el Pool de TiDB:', err.message);
   } else {
     console.log('✅ Conectado exitosamente a TiDB Cloud (Pool activo).');
-    connection.release(); 
+    connection.release(); // Importante: devolver la conexión al pool
   }
 });
 
-
-export default connection;
+// Exportamos el pool (No una conexión simple)
+export default pool;
 
 
 // config/db.js
